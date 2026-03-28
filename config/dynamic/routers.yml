@@ -3,18 +3,47 @@
 
 http:
   routers:
+    # ── Traefik Dashboard ─────────────────────────────
+    traefik-dashboard:
+      rule: "Host(`traefik.lshworkspace.com`)"
+      entryPoints:
+        - websecure
+      service: api@internal
+      middlewares:
+        - dashboard-auth
+        - security-headers
+        - rate-limit-strict
+      tls:
+        certResolver: letsencrypt
+
     # ── K3s Services ──────────────────────────────────
+
+    # www → non-www redirect
+    lshworkspace-www-redirect:
+      rule: "Host(`www.lshworkspace.com`)"
+      entryPoints:
+        - websecure
+      service: lshworkspace-blog
+      middlewares:
+        - www-redirect
+      tls:
+        certResolver: letsencrypt
+
+    # Main blog/portfolio
     lshworkspace-blog:
-      rule: "Host(`lshworkspace.com`) || Host(`www.lshworkspace.com`)"
+      rule: "Host(`lshworkspace.com`)"
       entryPoints:
         - websecure
       service: lshworkspace-blog
       middlewares:
         - security-headers
+        - compress
         - rate-limit-default
       tls:
         certResolver: letsencrypt
+      priority: 1
 
+    # OAuth Authorization Server
     lshworkspace-oauth:
       rule: "Host(`auth.lshworkspace.com`)"
       entryPoints:
@@ -22,18 +51,35 @@ http:
       service: lshworkspace-oauth
       middlewares:
         - security-headers
+        - oauth-cors
         - rate-limit-auth
       tls:
         certResolver: letsencrypt
 
-    # ── Non-K3s Services (예시) ───────────────────────
+    # ── Non-K3s Services ──────────────────────────────
+    # Uncomment and configure as needed
+
     # junartstory:
-    #   rule: "Host(`junartstory.com`)"
+    #   rule: "Host(`junartstory.com`) || Host(`www.junartstory.com`)"
     #   entryPoints:
     #     - websecure
     #   service: junartstory
     #   middlewares:
     #     - security-headers
+    #     - compress
+    #     - rate-limit-default
+    #   tls:
+    #     certResolver: letsencrypt
+
+    # pgadmin:
+    #   rule: "Host(`pgadmin.lshworkspace.com`)"
+    #   entryPoints:
+    #     - websecure
+    #   service: pgadmin
+    #   middlewares:
+    #     - security-headers
+    #     - rate-limit-strict
+    #     - dashboard-auth
     #   tls:
     #     certResolver: letsencrypt
 
@@ -41,15 +87,29 @@ http:
     lshworkspace-blog:
       loadBalancer:
         servers:
-          # K3s NodePort (App Server WireGuard IP:NodePort)
+          # K3s NodePort → Nginx → Next.js
           - url: "http://10.0.0.2:30080"
+        healthCheck:
+          path: /health
+          interval: 10s
+          timeout: 3s
 
     lshworkspace-oauth:
       loadBalancer:
         servers:
+          # K3s NodePort → Spring OAuth
           - url: "http://10.0.0.2:30081"
+        healthCheck:
+          path: /actuator/health
+          interval: 10s
+          timeout: 3s
 
     # junartstory:
+    #   loadBalancer:
+    #     servers:
+    #       - url: "http://10.0.0.x:port"
+
+    # pgadmin:
     #   loadBalancer:
     #     servers:
     #       - url: "http://10.0.0.x:port"

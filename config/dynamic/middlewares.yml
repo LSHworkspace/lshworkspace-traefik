@@ -1,6 +1,7 @@
 # Dynamic Configuration - Middlewares
 http:
   middlewares:
+    # ── Security Headers ──────────────────────────────
     security-headers:
       headers:
         stsSeconds: 63072000
@@ -11,7 +12,11 @@ http:
         browserXssFilter: true
         referrerPolicy: "strict-origin-when-cross-origin"
         frameDeny: true
+        customResponseHeaders:
+          X-Robots-Tag: "noindex, nofollow, nosnippet, noarchive"
+          Server: ""
 
+    # ── Rate Limiting ─────────────────────────────────
     rate-limit-default:
       rateLimit:
         average: 100
@@ -23,3 +28,43 @@ http:
         average: 30
         burst: 50
         period: 1m
+
+    rate-limit-strict:
+      rateLimit:
+        average: 5
+        burst: 10
+        period: 1m
+
+    # ── Compression ───────────────────────────────────
+    compress:
+      compress:
+        excludedContentTypes:
+          - "text/event-stream"
+
+    # ── www → non-www redirect ────────────────────────
+    www-redirect:
+      redirectRegex:
+        regex: "^https://www\\.(.*)"
+        replacement: "https://${1}"
+        permanent: true
+
+    # ── Dashboard Auth (Basic Auth) ───────────────────
+    dashboard-auth:
+      basicAuth:
+        users:
+          - "${DASHBOARD_AUTH}"
+        removeHeader: true
+
+    # ── OAuth CORS ────────────────────────────────────
+    oauth-cors:
+      headers:
+        accessControlAllowMethods:
+          - "GET"
+          - "POST"
+          - "OPTIONS"
+        accessControlAllowHeaders:
+          - "Authorization"
+          - "Content-Type"
+        accessControlAllowOriginList:
+          - "https://lshworkspace.com"
+        accessControlMaxAge: 86400
