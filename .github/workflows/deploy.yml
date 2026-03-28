@@ -3,29 +3,58 @@ name: Deploy Traefik Config
 on:
   push:
     branches: ['main']
+    paths:
+      - 'config/**'
+      - 'docker-compose.yml'
   workflow_dispatch:
 
-env:
-  SERVER_USER: ${{ secrets.SERVER_USER }}
-  SERVER_IP: ${{ secrets.PROXY_SERVER_IP }}
-  SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
-
 jobs:
-  deploy:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Deploy config via SSH
+      - name: Validate YAML syntax
+        run: |
+          for f in config/traefik.yml config/dynamic/*.yml; do
+            echo "Validating $f..."
+            python3 -c "import yaml; yaml.safe_load(open('$f'))" || exit 1
+          done
+          echo "All config files valid"
+
+      - name: Validate docker-compose
+        run: docker compose -f docker-compose.yml config --quiet
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: validate
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ env.SERVER_IP }}
-          username: ${{ env.SERVER_USER }}
-          key: ${{ env.SERVER_SSH_KEY }}
+          host: ${{ secrets.PROXY_SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             set -e
             cd /opt/traefik
             git pull origin main
+            docker compose pull
             docker compose up -d --force-recreate
-            echo "Traefik config deployed successfully"
+            sleep 5
+            docker compose ps
+            echo "Traefik deployed successfully"
+
+      - name: Health check
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.PROXY_SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            curl -sf http://localhost:80/ping || echo "Warning: ping check failed"
