@@ -56,6 +56,28 @@ http:
       tls:
         certResolver: letsencrypt
 
+    # ── Monitoring ────────────────────────────────────
+    grafana:
+      rule: "Host(`grafana.lshworkspace.com`)"
+      entryPoints:
+        - websecure
+      service: grafana
+      middlewares:
+        - security-headers
+        - rate-limit-default
+      tls:
+        certResolver: letsencrypt
+
+    uptime-kuma:
+      rule: "Host(`status.lshworkspace.com`)"
+      entryPoints:
+        - websecure
+      service: uptime-kuma
+      middlewares:
+        - security-headers
+      tls:
+        certResolver: letsencrypt
+
     # ── Non-K3s Services ──────────────────────────────
     # Uncomment and configure as needed
 
@@ -103,6 +125,18 @@ http:
           path: /actuator/health
           interval: 10s
           timeout: 3s
+
+    grafana:
+      loadBalancer:
+        servers:
+          # K3s NodePort → Grafana
+          - url: "http://10.0.0.2:30090"
+
+    uptime-kuma:
+      loadBalancer:
+        servers:
+          # K3s NodePort → Uptime Kuma
+          - url: "http://10.0.0.2:30091"
 
     # junartstory:
     #   loadBalancer:
