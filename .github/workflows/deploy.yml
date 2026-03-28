@@ -1,0 +1,31 @@
+name: Deploy Traefik Config
+
+on:
+  push:
+    branches: ['main']
+  workflow_dispatch:
+
+env:
+  SERVER_USER: ${{ secrets.SERVER_USER }}
+  SERVER_IP: ${{ secrets.PROXY_SERVER_IP }}
+  SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy config via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ env.SERVER_IP }}
+          username: ${{ env.SERVER_USER }}
+          key: ${{ env.SERVER_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/traefik
+            git pull origin main
+            docker compose up -d --force-recreate
+            echo "Traefik config deployed successfully"

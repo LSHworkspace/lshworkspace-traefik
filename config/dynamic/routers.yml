@@ -1,0 +1,55 @@
+# Dynamic Configuration - Routers & Services
+# Routes traffic to K3s NodePort services and non-K3s services
+
+http:
+  routers:
+    # ── K3s Services ──────────────────────────────────
+    lshworkspace-blog:
+      rule: "Host(`lshworkspace.com`) || Host(`www.lshworkspace.com`)"
+      entryPoints:
+        - websecure
+      service: lshworkspace-blog
+      middlewares:
+        - security-headers
+        - rate-limit-default
+      tls:
+        certResolver: letsencrypt
+
+    lshworkspace-oauth:
+      rule: "Host(`auth.lshworkspace.com`)"
+      entryPoints:
+        - websecure
+      service: lshworkspace-oauth
+      middlewares:
+        - security-headers
+        - rate-limit-auth
+      tls:
+        certResolver: letsencrypt
+
+    # ── Non-K3s Services (예시) ───────────────────────
+    # junartstory:
+    #   rule: "Host(`junartstory.com`)"
+    #   entryPoints:
+    #     - websecure
+    #   service: junartstory
+    #   middlewares:
+    #     - security-headers
+    #   tls:
+    #     certResolver: letsencrypt
+
+  services:
+    lshworkspace-blog:
+      loadBalancer:
+        servers:
+          # K3s NodePort (App Server WireGuard IP:NodePort)
+          - url: "http://10.0.0.2:30080"
+
+    lshworkspace-oauth:
+      loadBalancer:
+        servers:
+          - url: "http://10.0.0.2:30081"
+
+    # junartstory:
+    #   loadBalancer:
+    #     servers:
+    #       - url: "http://10.0.0.x:port"
