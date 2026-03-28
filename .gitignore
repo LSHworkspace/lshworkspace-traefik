@@ -2,3 +2,8 @@
 acme.json
 *.log
 .DS_Store
+
+# Certificates (never commit private keys)
+config/certs/*.pem
+config/certs/*.key
+!config/certs/.gitkeep

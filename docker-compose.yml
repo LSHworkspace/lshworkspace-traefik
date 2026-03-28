@@ -11,11 +11,10 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./config/traefik.yml:/etc/traefik/traefik.yml:ro
       - ./config/dynamic:/etc/traefik/dynamic:ro
-      - traefik-certs:/letsencrypt
+      - ./config/certs:/etc/traefik/certs:ro
       - traefik-logs:/var/log/traefik
     environment:
       - TZ=Asia/Seoul
-      - ACME_EMAIL=${ACME_EMAIL}
       - DASHBOARD_AUTH=${DASHBOARD_AUTH}
     networks:
       - proxy
@@ -31,7 +30,6 @@ services:
         max-file: "3"
 
 volumes:
-  traefik-certs:
   traefik-logs:
 
 networks:

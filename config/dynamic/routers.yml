@@ -1,9 +1,10 @@
 # Dynamic Configuration - Routers & Services
 # Routes traffic to K3s NodePort services and non-K3s services
+# TLS via Cloudflare Origin Certificate (configured in tls.yml)
 
 http:
   routers:
-    # ── Traefik Dashboard ─────────────────────────────
+    # ─��� Traefik Dashboard ─────────────────────────────
     traefik-dashboard:
       rule: "Host(`traefik.lshworkspace.com`)"
       entryPoints:
@@ -13,10 +14,9 @@ http:
         - dashboard-auth
         - security-headers
         - rate-limit-strict
-      tls:
-        certResolver: letsencrypt
+      tls: {}
 
-    # ── K3s Services ──────────────────────────────────
+    # ── K3s Services ───���──────────────────────────────
 
     # www → non-www redirect
     lshworkspace-www-redirect:
@@ -26,8 +26,7 @@ http:
       service: lshworkspace-blog
       middlewares:
         - www-redirect
-      tls:
-        certResolver: letsencrypt
+      tls: {}
 
     # Main blog/portfolio
     lshworkspace-blog:
@@ -39,8 +38,7 @@ http:
         - security-headers
         - compress
         - rate-limit-default
-      tls:
-        certResolver: letsencrypt
+      tls: {}
       priority: 1
 
     # OAuth Authorization Server
@@ -53,10 +51,9 @@ http:
         - security-headers
         - oauth-cors
         - rate-limit-auth
-      tls:
-        certResolver: letsencrypt
+      tls: {}
 
-    # ── Monitoring ────────────────────────────────────
+    # ── Monitoring ──────────────────────────���─────────
     grafana:
       rule: "Host(`grafana.lshworkspace.com`)"
       entryPoints:
@@ -65,8 +62,7 @@ http:
       middlewares:
         - security-headers
         - rate-limit-default
-      tls:
-        certResolver: letsencrypt
+      tls: {}
 
     uptime-kuma:
       rule: "Host(`status.lshworkspace.com`)"
@@ -75,42 +71,26 @@ http:
       service: uptime-kuma
       middlewares:
         - security-headers
-      tls:
-        certResolver: letsencrypt
+      tls: {}
 
     # ── Non-K3s Services ──────────────────────────────
-    # Uncomment and configure as needed
-
-    # junartstory:
-    #   rule: "Host(`junartstory.com`) || Host(`www.junartstory.com`)"
-    #   entryPoints:
-    #     - websecure
-    #   service: junartstory
-    #   middlewares:
-    #     - security-headers
-    #     - compress
-    #     - rate-limit-default
-    #   tls:
-    #     certResolver: letsencrypt
-
-    # pgadmin:
-    #   rule: "Host(`pgadmin.lshworkspace.com`)"
-    #   entryPoints:
-    #     - websecure
-    #   service: pgadmin
-    #   middlewares:
-    #     - security-headers
-    #     - rate-limit-strict
-    #     - dashboard-auth
-    #   tls:
-    #     certResolver: letsencrypt
+    pgadmin:
+      rule: "Host(`pgadmin.lshworkspace.com`)"
+      entryPoints:
+        - websecure
+      service: pgadmin
+      middlewares:
+        - security-headers
+        - rate-limit-strict
+        - dashboard-auth
+      tls: {}
 
   services:
     lshworkspace-blog:
       loadBalancer:
         servers:
-          # K3s NodePort → Nginx → Next.js
-          - url: "http://10.0.0.2:30080"
+          # K3s NodePort (Performance server) → Nginx → Next.js
+          - url: "http://168.107.56.184:30080"
         healthCheck:
           path: /health
           interval: 10s
@@ -119,8 +99,8 @@ http:
     lshworkspace-oauth:
       loadBalancer:
         servers:
-          # K3s NodePort → Spring OAuth
-          - url: "http://10.0.0.2:30081"
+          # K3s NodePort (Performance server) → Spring OAuth
+          - url: "http://168.107.56.184:30081"
         healthCheck:
           path: /actuator/health
           interval: 10s
@@ -129,21 +109,15 @@ http:
     grafana:
       loadBalancer:
         servers:
-          # K3s NodePort → Grafana
-          - url: "http://10.0.0.2:30090"
+          - url: "http://168.107.56.184:30090"
 
     uptime-kuma:
       loadBalancer:
         servers:
-          # K3s NodePort → Uptime Kuma
-          - url: "http://10.0.0.2:30091"
+          - url: "http://168.107.56.184:30091"
 
-    # junartstory:
-    #   loadBalancer:
-    #     servers:
-    #       - url: "http://10.0.0.x:port"
-
-    # pgadmin:
-    #   loadBalancer:
-    #     servers:
-    #       - url: "http://10.0.0.x:port"
+    pgadmin:
+      loadBalancer:
+        servers:
+          # Local pgadmin on Proxy server
+          - url: "http://127.0.0.1:5050"
